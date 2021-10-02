@@ -204,3 +204,7 @@ func (c CAD) Sub(other CAD) CAD {
 func (c CAD) GoString() string {
 	return fmt.Sprintf("Cents(%d)", c.cents)
 }
+
+func (c CAD) String() string {
+	return fmt.Sprintf("CAD$%d.%02d", c.whole, c.decimal)
+}
