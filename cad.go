@@ -200,3 +200,7 @@ func (c CAD) Mul(scalar int64) CAD {
 func (c CAD) Sub(other CAD) CAD {
 	return Cents(c.AsCents() - other.AsCents())
 }
+
+func (c CAD) GoString() string {
+	return fmt.Sprintf("Cents(%d)", c.cents)
+}
