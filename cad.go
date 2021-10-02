@@ -1,6 +1,7 @@
 package cad
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -221,4 +222,22 @@ func (c *CAD) UnmarshalJSON(b []byte) (err error) {
 	}
 	*c, err = ParseCAD(cadStr)
 	return
+}
+
+func (c CAD) Value() (driver.Value, error) {
+	return c.String(), nil
+}
+
+func (c *CAD) Scan(value interface{}) error {
+	if value == nil {
+		*c = CAD{}
+		return nil
+	}
+	if bv, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := bv.(string); ok {
+			*c, err = ParseCAD(v)
+			return nil
+		}
+	}
+	return errors.New("failed to scan CAD")
 }
