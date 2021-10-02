@@ -1,6 +1,7 @@
 package cad
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -207,4 +208,17 @@ func (c CAD) GoString() string {
 
 func (c CAD) String() string {
 	return fmt.Sprintf("CAD$%d.%02d", c.whole, c.decimal)
+}
+
+func (c CAD) MarshalJSON() (b []byte, err error) {
+	return json.Marshal(fmt.Sprintf("%s", c))
+}
+
+func (c *CAD) UnmarshalJSON(b []byte) (err error) {
+	var cadStr string
+	if err = json.Unmarshal(b, &cadStr); err != nil {
+		return
+	}
+	*c, err = ParseCAD(cadStr)
+	return
 }
