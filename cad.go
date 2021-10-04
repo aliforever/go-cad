@@ -135,7 +135,6 @@ func ParseCAD(s string) (cad CAD, err error) {
 
 	whole, parseErr = strconv.Atoi(split[0])
 	if parseErr != nil {
-		fmt.Println(parseErr, split)
 		err = possibleErr
 		return
 	}
