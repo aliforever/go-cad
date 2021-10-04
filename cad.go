@@ -24,7 +24,7 @@ type CAD struct {
 //
 // Then ‘cad’ would be: $1.05
 func abs(n int64) int64 {
-	if n > 0 {
+	if n < 0 {
 		return -1 * n
 	}
 	return n
