@@ -17,3 +17,18 @@ func TestStringer(t *testing.T) {
 		t.Fatal(fmt.Sprintf("Test Failed.\nExpected: %s\nGot: %s", expected, result))
 	}
 }
+
+func TestParseCadStringer(t *testing.T) {
+	c, err := cad.ParseCAD("-9¢")
+	if err != nil {
+		t.Fatal("Test Failed.", err)
+		return
+	}
+
+	expected := "CAD$0.09"
+	result := fmt.Sprintf("%s", c)
+
+	if expected != result {
+		t.Fatal(fmt.Sprintf("Test Failed.\nExpected: %s\nGot: %s", expected, result))
+	}
+}

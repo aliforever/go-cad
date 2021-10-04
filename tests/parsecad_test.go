@@ -42,10 +42,10 @@ func TestParseCad(t *testing.T) {
 		"CAD-$.09":      -9,
 		"CAD$-0.09":     -9,
 		"CAD$-.09":      -9,
-		"9¢":            900,
-		"-9¢":           -900,
-		"123456¢":       12345600,
-		"-123456¢":      -12345600,
+		"9¢":            9,
+		"-9¢":           -9,
+		"123456¢":       123456,
+		"-123456¢":      -123456,
 	}
 	for value, cents := range mapValueCents {
 		cd, err := cad.ParseCAD(value)

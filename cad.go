@@ -10,10 +10,9 @@ import (
 )
 
 type CAD struct {
-	whole      int64
-	decimal    int64
-	cents      int64
-	isNegative bool
+	whole   int64
+	decimal int64
+	cents   int64
 }
 
 // Cents returns a CAD that represents ‘n’ cents.
@@ -31,19 +30,15 @@ func abs(n int64) int64 {
 }
 
 func Cents(n int64) CAD {
-	var isNegative bool
-	if n < 0 {
-		isNegative = true
-		n = abs(n)
-	}
+	isNegative := n < 0
+
 	whole := n / 100
 	decimal := n - (whole * 100)
 
 	return CAD{
-		isNegative: isNegative,
-		whole:      whole,
-		decimal:    decimal,
-		cents:      n,
+		whole:   negativeOnFlag(isNegative, whole),
+		decimal: negativeOnFlag(isNegative, decimal),
+		cents:   n,
 	}
 }
 
@@ -90,13 +85,26 @@ func Cents(n int64) CAD {
 // • 123456¢
 // • -123456¢
 func ParseCAD(s string) (cad CAD, err error) {
+	hasDollarSign := strings.Contains(s, "$")
+	hasCentSign := strings.Contains(s, "¢")
+
+	if !hasDollarSign && !hasCentSign {
+		err = errors.New("$_or_¢_not_defined")
+		return
+	}
+
+	if hasDollarSign && hasCentSign {
+		err = errors.New("should_not_contain_dollar_and_cent_signs_together")
+		return
+	}
+
+	possibleErr := errors.New("invalid_cad")
+
 	s = strings.ReplaceAll(s, "$", "")
 	s = strings.ReplaceAll(s, "CAD", "")
 	s = strings.ReplaceAll(s, "¢", "")
 	s = strings.ReplaceAll(s, ",", "")
 	s = strings.TrimSpace(s)
-
-	possibleErr := errors.New("invalid_cad")
 
 	isNegative := false
 	negativeIndex := strings.Index(s, "-")
@@ -151,16 +159,19 @@ func ParseCAD(s string) (cad CAD, err error) {
 		}
 	}
 
-	cents := int64((whole * 100) + decimal)
-	if isNegative {
-		cents = -cents
+	if hasCentSign && whole > 0 && decimal > 0 {
+		err = possibleErr
+		return
 	}
-	cad = CAD{
-		isNegative: isNegative,
-		whole:      int64(whole),
-		decimal:    int64(decimal),
-		cents:      cents,
+
+	var cents int64
+	if hasCentSign && decimal == 0 {
+		cents = negativeOnFlag(isNegative, int64(whole))
+	} else {
+		cents = negativeOnFlag(isNegative, int64((whole*100)+decimal))
 	}
+
+	cad = Cents(cents)
 	return
 }
 
@@ -168,10 +179,9 @@ func ParseCAD(s string) (cad CAD, err error) {
 // Abs returns the absolute value.
 func (c CAD) Abs() CAD {
 	return CAD{
-		whole:      c.whole,
-		decimal:    c.decimal,
-		cents:      abs(c.cents),
-		isNegative: false,
+		whole:   abs(c.whole),
+		decimal: abs(c.decimal),
+		cents:   abs(c.cents),
 	}
 }
 
@@ -186,16 +196,20 @@ func (c CAD) Add(other CAD) CAD {
 	return Cents(c.AsCents() + other.AsCents())
 }
 
+func negativeOnFlag(f bool, n int64) (result int64) {
+	result = n
+	if f {
+		result = -n
+	}
+	return
+}
+
 // CanonicalForm returns the number of dollars and cents that CAD represents.
 //
 // ‘cents’ is always less than for equal to 99. I.e.,:
 //	cents ≤ 99
 func (c CAD) CanonicalForm() (dollars int64, cents int64) {
-	whole := c.whole
-	if c.isNegative {
-		whole = -whole
-	}
-	return whole, c.decimal
+	return c.whole, c.decimal
 }
 
 // Mul multiplies CAD by a scalar (number) and returns the result.
@@ -209,7 +223,7 @@ func (c CAD) Sub(other CAD) CAD {
 }
 
 func (c CAD) GoString() string {
-	return fmt.Sprintf("Cents(%d)", c.cents)
+	return fmt.Sprintf("cad.Cents(%d)", c.cents)
 }
 
 func (c CAD) String() string {
@@ -217,7 +231,7 @@ func (c CAD) String() string {
 }
 
 func (c CAD) MarshalJSON() (b []byte, err error) {
-	return json.Marshal(fmt.Sprintf("%s", c))
+	return json.Marshal(c.String())
 }
 
 func (c *CAD) UnmarshalJSON(b []byte) (err error) {
@@ -241,7 +255,9 @@ func (c *CAD) Scan(value interface{}) error {
 	if bv, err := driver.String.ConvertValue(value); err == nil {
 		if v, ok := bv.(string); ok {
 			*c, err = ParseCAD(v)
-			return nil
+			if err == nil {
+				return nil
+			}
 		}
 	}
 	return errors.New("failed to scan CAD")
