@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 )
@@ -24,11 +23,18 @@ type CAD struct {
 //	cad := Cents(105)
 //
 // Then ‘cad’ would be: $1.05
+func abs(n int64) int64 {
+	if n > 0 {
+		return -1 * n
+	}
+	return n
+}
+
 func Cents(n int64) CAD {
 	var isNegative bool
 	if n < 0 {
 		isNegative = true
-		n = int64(math.Abs(float64(n)))
+		n = abs(n)
 	}
 	whole := n / 100
 	decimal := n - (whole * 100)
@@ -165,7 +171,7 @@ func (c CAD) Abs() CAD {
 	return CAD{
 		whole:      c.whole,
 		decimal:    c.decimal,
-		cents:      int64(math.Abs(float64(c.cents))),
+		cents:      abs(c.cents),
 		isNegative: false,
 	}
 }
