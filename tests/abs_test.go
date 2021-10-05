@@ -1,39 +1,127 @@
 package tests
 
 import (
-	"fmt"
-	"math"
 	"testing"
 
 	"github.com/aliforever/go-cad"
 )
 
 func TestAbs(t *testing.T) {
-	x := int64(-105)
+	tests := []struct {
+		Cents    int64
+		Expected cad.CAD
+	}{
+		{
+			Cents:    -105,
+			Expected: cad.Cents(105),
+		},
 
-	c := cad.Cents(x)
+		{
+			Cents:    -5,
+			Expected: cad.Cents(5),
+		},
+		{
+			Cents:    -4,
+			Expected: cad.Cents(4),
+		},
+		{
+			Cents:    -3,
+			Expected: cad.Cents(3),
+		},
+		{
+			Cents:    -2,
+			Expected: cad.Cents(2),
+		},
 
-	result := c.Abs().AsCents()
-	expected := int64(math.Abs(float64(x)))
+		{
+			Cents:    -1,
+			Expected: cad.Cents(1),
+		},
 
-	if result != expected {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expected, result))
+		{
+			Cents:    0,
+			Expected: cad.Cents(0),
+		},
+		{
+			Cents:    1,
+			Expected: cad.Cents(1),
+		},
+		{
+			Cents:    2,
+			Expected: cad.Cents(2),
+		},
+		{
+			Cents:    3,
+			Expected: cad.Cents(3),
+		},
+		{
+			Cents:    4,
+			Expected: cad.Cents(4),
+		},
+		{
+			Cents:    5,
+			Expected: cad.Cents(5),
+		},
+
+		{
+			Cents:    -12345,
+			Expected: cad.Cents(12345),
+		},
+		{
+			Cents:    12345,
+			Expected: cad.Cents(12345),
+		},
+	}
+
+	for testNumber, test := range tests {
+
+		c := cad.Cents(test.Cents)
+
+		actual := c.Abs()
+		expected := test.Expected
+
+		if actual != expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %s", expected)
+			t.Logf("ACTUAL:   %s", actual)
+			continue
+		}
 	}
 }
 
 func TestAbsParse(t *testing.T) {
-	x := "-$1.05"
-
-	xCad, err := cad.ParseCAD(x)
-	if err != nil {
-		t.Fatal(err)
-		return
+	tests := []struct {
+		CadString     string
+		ExpectedCents int64
+	}{
+		{
+			CadString:     "-$1.05",
+			ExpectedCents: 105,
+		},
+		{
+			CadString:     "CAD$-3.75",
+			ExpectedCents: 375,
+		},
+		{
+			CadString:     "CAD$3.75",
+			ExpectedCents: 375,
+		},
 	}
 
-	result := xCad.Abs().AsCents()
-	expected := int64(105)
+	for testNumber, test := range tests {
+		xCad, err := cad.ParseCAD(test.CadString)
+		if err != nil {
+			t.Fatalf("For test %s - %s", test.CadString, err)
+			return
+		}
 
-	if result != expected {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expected, result))
+		result := xCad.Abs().AsCents()
+		if result != test.ExpectedCents {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %d", test.ExpectedCents)
+			t.Logf("ACTUAL:   %d", result)
+			continue
+		}
+
 	}
 }

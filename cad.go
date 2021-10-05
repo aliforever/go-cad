@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 type CAD struct {
-	whole   int64
-	decimal int64
-	cents   int64
+	cents int64
 }
 
 // Cents returns a CAD that represents ‘n’ cents.
@@ -30,15 +29,8 @@ func abs(n int64) int64 {
 }
 
 func Cents(n int64) CAD {
-	isNegative := n < 0
-
-	whole := n / 100
-	decimal := n - (whole * 100)
-
 	return CAD{
-		whole:   negativeOnFlag(isNegative, whole),
-		decimal: negativeOnFlag(isNegative, decimal),
-		cents:   n,
+		cents: n,
 	}
 }
 
@@ -85,20 +77,39 @@ func Cents(n int64) CAD {
 // • 123456¢
 // • -123456¢
 func ParseCAD(s string) (cad CAD, err error) {
-	hasDollarSign := strings.Contains(s, "$")
-	hasCentSign := strings.Contains(s, "¢")
+	possibleErr := errors.New("invalid_cad")
 
-	if !hasDollarSign && !hasCentSign {
+	r := regexp.MustCompile(`[^$\dCAD¢.-]`)
+	if r.MatchString(s) {
+		err = possibleErr
+		return
+	}
+
+	dollarSign := "$"
+	centSign := "¢"
+
+	dollarSignIndex := strings.Index(s, dollarSign)
+	centSignIndex := strings.Index(s, centSign)
+
+	if dollarSignIndex == -1 && centSignIndex == -1 {
 		err = errors.New("$_or_¢_not_defined")
 		return
 	}
 
-	if hasDollarSign && hasCentSign {
+	if dollarSignIndex != -1 && centSignIndex != -1 {
 		err = errors.New("should_not_contain_dollar_and_cent_signs_together")
 		return
 	}
 
-	possibleErr := errors.New("invalid_cad")
+	if dollarSignIndex > 1 {
+		err = errors.New("invalid_position_for_dollar_sing")
+		return
+	}
+
+	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Contains(s, "-") {
+		err = errors.New("more_than_one_dollar_or_cent_sign")
+		return
+	}
 
 	s = strings.ReplaceAll(s, "$", "")
 	s = strings.ReplaceAll(s, "CAD", "")
@@ -148,6 +159,10 @@ func ParseCAD(s string) (cad CAD, err error) {
 	}
 
 	if len(split) == 2 {
+		if centSignIndex != -1 {
+			err = possibleErr
+			return
+		}
 		decimal, parseErr = strconv.Atoi(split[1])
 		if parseErr != nil {
 			err = possibleErr
@@ -159,13 +174,13 @@ func ParseCAD(s string) (cad CAD, err error) {
 		}
 	}
 
-	if hasCentSign && whole > 0 && decimal > 0 {
+	if centSignIndex != -1 && whole > 0 && decimal > 0 {
 		err = possibleErr
 		return
 	}
 
 	var cents int64
-	if hasCentSign && decimal == 0 {
+	if centSignIndex != -1 && decimal == 0 {
 		cents = negativeOnFlag(isNegative, int64(whole))
 	} else {
 		cents = negativeOnFlag(isNegative, int64((whole*100)+decimal))
@@ -179,9 +194,7 @@ func ParseCAD(s string) (cad CAD, err error) {
 // Abs returns the absolute value.
 func (c CAD) Abs() CAD {
 	return CAD{
-		whole:   abs(c.whole),
-		decimal: abs(c.decimal),
-		cents:   abs(c.cents),
+		cents: abs(c.cents),
 	}
 }
 
@@ -209,7 +222,8 @@ func negativeOnFlag(f bool, n int64) (result int64) {
 // ‘cents’ is always less than for equal to 99. I.e.,:
 //	cents ≤ 99
 func (c CAD) CanonicalForm() (dollars int64, cents int64) {
-	return c.whole, c.decimal
+	whole := c.cents / 100
+	return whole, c.cents - whole
 }
 
 // Mul multiplies CAD by a scalar (number) and returns the result.
@@ -227,7 +241,8 @@ func (c CAD) GoString() string {
 }
 
 func (c CAD) String() string {
-	return fmt.Sprintf("CAD$%d.%02d", c.whole, c.decimal)
+	dollars, cents := c.CanonicalForm()
+	return fmt.Sprintf("CAD$%d.%02d", dollars, cents)
 }
 
 func (c CAD) MarshalJSON() (b []byte, err error) {
@@ -235,11 +250,19 @@ func (c CAD) MarshalJSON() (b []byte, err error) {
 }
 
 func (c *CAD) UnmarshalJSON(b []byte) (err error) {
+	if c == nil {
+		err = errors.New("nil_receiver")
+		return
+	}
 	var cadStr string
 	if err = json.Unmarshal(b, &cadStr); err != nil {
 		return
 	}
-	*c, err = ParseCAD(cadStr)
+	var value CAD
+	value, err = ParseCAD(cadStr)
+	if err == nil {
+		*c = value
+	}
 	return
 }
 
@@ -247,18 +270,31 @@ func (c CAD) Value() (driver.Value, error) {
 	return c.String(), nil
 }
 
-func (c *CAD) Scan(value interface{}) error {
-	if value == nil {
-		*c = CAD{}
-		return nil
+func (c *CAD) Scan(value interface{}) (err error) {
+	if c == nil {
+		return errors.New("nil_receiver")
 	}
-	if bv, err := driver.String.ConvertValue(value); err == nil {
-		if v, ok := bv.(string); ok {
-			*c, err = ParseCAD(v)
-			if err == nil {
-				return nil
-			}
-		}
+	var bv driver.Value
+	bv, err = driver.String.ConvertValue(value)
+	if err != nil {
+		return
 	}
-	return errors.New("failed to scan CAD")
+
+	var s string
+	switch casted := bv.(type) {
+	case []byte:
+		s = string(casted)
+	case string:
+		s = casted
+	default:
+		return errors.New("internal_error")
+	}
+
+	var val CAD
+	val, err = ParseCAD(s)
+	if err != nil {
+		return
+	}
+	*c = val
+	return
 }

@@ -10,7 +10,7 @@ import (
 func TestGoString(t *testing.T) {
 	c := cad.Cents(224)
 
-	expected := "Cents(224)"
+	expected := "cad.Cents(224)"
 	result := fmt.Sprintf("%#v", c)
 
 	if expected != result {

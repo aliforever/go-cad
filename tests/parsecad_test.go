@@ -59,3 +59,35 @@ func TestParseCad(t *testing.T) {
 		}
 	}
 }
+
+func TestParseCadFail(t *testing.T) {
+	values := []string{
+		"",
+		"-",
+		"$",
+		"¢",
+		".",
+		",",
+		"CAD",
+		"CADILLAC",
+		"cherry",
+		"---5",
+		"5-",
+		"5--",
+		"123CAD45",
+		"123$45",
+		"123¢45",
+		"123.45.6",
+		"$$$123.45",
+		"$123.45$",
+		"-$-123.45",
+		"$123.-45",
+	}
+	for i, value := range values {
+		_, err := cad.ParseCAD(value)
+		if err == nil {
+			t.Errorf("Test %d Failed\nExpected an error but parsed for %s", i, value)
+			continue
+		}
+	}
+}
