@@ -2,7 +2,6 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/aliforever/go-cad"
@@ -10,21 +9,40 @@ import (
 
 func TestJsonMarshal(t *testing.T) {
 	type Data struct {
-		Name    string  `json:"name"`
-		Balance cad.CAD `json:"balance"`
+		Name     string  `json:"name"`
+		Balance  cad.CAD `json:"balance"`
+		Expected string  `json:"-"`
 	}
 
-	d := Data{Name: "Jow Blow", Balance: cad.Cents(12345)}
-	jsonBytes, err := json.Marshal(d)
-	if err != nil {
-		t.Fatal("Test Failed.", err)
-		return
+	d := []Data{
+		{
+			Name:     "Jow Blow",
+			Balance:  cad.Cents(12345),
+			Expected: `{"name":"Jow Blow","balance":"CAD$123.45"}`,
+		},
+		{
+			Name:     "John Cena",
+			Balance:  cad.Cents(1234),
+			Expected: `{"name":"John Cena","balance":"CAD$12.34"}`,
+		},
+		{
+			Name:     "Jow Blow",
+			Balance:  cad.Cents(-2452),
+			Expected: `{"name":"Jow Blow","balance":"CAD$-24.52"}`,
+		},
 	}
 
-	expected := `{"name":"Jow Blow","balance":"CAD$123.45"}`
-	result := string(jsonBytes)
-
-	if expected != result {
-		t.Fatal(fmt.Sprintf("Test Failed.\nExpected: %s\nGot: %s", expected, result))
+	for testNumber, data := range d {
+		j, err := json.Marshal(data)
+		if err != nil {
+			t.Errorf("Can't marshal data for test number #%d: %s", testNumber, err)
+			continue
+		}
+		if string(j) != data.Expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %s", data.Expected)
+			t.Logf("ACTUAL:   %s", string(j))
+			continue
+		}
 	}
 }

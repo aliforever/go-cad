@@ -1,16 +1,36 @@
 package tests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/aliforever/go-cad"
 )
 
 func TestCents(t *testing.T) {
-	c := cad.Cents(325)
-	if c.AsCents() != 325 {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", 325, c.AsCents()))
-		return
+	data := []struct {
+		Cents int64
+	}{
+		{
+			Cents: 250,
+		},
+		{
+			Cents: 305,
+		},
+		{
+			Cents: -650,
+		},
+		{
+			Cents: -400,
+		},
+	}
+
+	for testNumber, datum := range data {
+		result := cad.Cents(datum.Cents).AsCents()
+		if result != datum.Cents {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %d", datum.Cents)
+			t.Logf("ACTUAL:   %d", result)
+			continue
+		}
 	}
 }

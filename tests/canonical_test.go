@@ -8,47 +8,76 @@ import (
 )
 
 func TestCanonical(t *testing.T) {
-	x := int64(105)
-
-	c := cad.Cents(x)
-
-	dollars, cents := c.CanonicalForm()
-
-	expectedDollars := int64(1)
-	expectedCents := int64(5)
-
-	if expectedDollars != dollars {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Dollars: %d\nDollars: %d", expectedDollars, dollars))
-		return
+	data := []struct {
+		Cents    int64
+		Expected string
+	}{
+		{
+			Cents:    105,
+			Expected: "1 5",
+		},
+		{
+			Cents:    250,
+			Expected: "2 50",
+		},
+		{
+			Cents:    -300,
+			Expected: "-3 0",
+		},
+		{
+			Cents:    -250,
+			Expected: "-2 -50",
+		},
 	}
 
-	if expectedCents != cents {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expectedCents, cents))
-		return
+	for testNumber, datum := range data {
+		dollars, cents := cad.Cents(datum.Cents).CanonicalForm()
+		result := fmt.Sprintf("%d %d", dollars, cents)
+		if result != datum.Expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %s", datum.Expected)
+			t.Logf("ACTUAL:   %s", result)
+			continue
+		}
 	}
 }
 
 func TestCanonicalParse(t *testing.T) {
-	x := "-$1.05"
-
-	xCad, err := cad.ParseCAD(x)
-	if err != nil {
-		t.Fatal(err)
-		return
+	data := []struct {
+		CAD      string
+		Expected string
+	}{
+		{
+			CAD:      "$1.05",
+			Expected: "1 5",
+		},
+		{
+			CAD:      "CAD$2.50",
+			Expected: "2 50",
+		},
+		{
+			CAD:      "-$3.00",
+			Expected: "-3 0",
+		},
+		{
+			CAD:      "$-2.50",
+			Expected: "-2 -50",
+		},
 	}
 
-	dollars, cents := xCad.CanonicalForm()
-
-	expectedDollars := int64(-1)
-	expectedCents := int64(5)
-
-	if expectedDollars != dollars {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Dollars: %d\nDollars: %d", expectedDollars, dollars))
-		return
-	}
-
-	if expectedCents != cents {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expectedCents, cents))
-		return
+	for testNumber, datum := range data {
+		c, err := cad.ParseCAD(datum.CAD)
+		if err != nil {
+			t.Errorf("For test #%d: Test Failed. %s", testNumber, err)
+			continue
+		}
+		dollars, cents := c.CanonicalForm()
+		result := fmt.Sprintf("%d %d", dollars, cents)
+		if result != datum.Expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %s", datum.Expected)
+			t.Logf("ACTUAL:   %s", result)
+			continue
+		}
 	}
 }

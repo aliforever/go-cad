@@ -79,7 +79,10 @@ func Cents(n int64) CAD {
 func ParseCAD(s string) (cad CAD, err error) {
 	possibleErr := errors.New("invalid_cad")
 
-	r := regexp.MustCompile(`[^$\dCAD¢.-]`)
+	s = strings.Replace(s, "CAD", "", 1)
+	s = strings.TrimSpace(s)
+
+	r := regexp.MustCompile(`[^$\d¢,.-]`)
 	if r.MatchString(s) {
 		err = possibleErr
 		return
@@ -87,106 +90,73 @@ func ParseCAD(s string) (cad CAD, err error) {
 
 	dollarSign := "$"
 	centSign := "¢"
+	dot := "."
+	minus := "-"
+
+	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Count(s, dot) > 1 || strings.Count(s, minus) > 1 {
+		err = possibleErr
+		return
+	}
 
 	dollarSignIndex := strings.Index(s, dollarSign)
 	centSignIndex := strings.Index(s, centSign)
+	minusIndex := strings.Index(s, minus)
+	dotIndex := strings.Index(s, dot)
 
 	if dollarSignIndex == -1 && centSignIndex == -1 {
-		err = errors.New("$_or_¢_not_defined")
+		err = possibleErr
 		return
 	}
 
 	if dollarSignIndex != -1 && centSignIndex != -1 {
-		err = errors.New("should_not_contain_dollar_and_cent_signs_together")
+		err = possibleErr
 		return
 	}
 
-	if dollarSignIndex > 1 {
-		err = errors.New("invalid_position_for_dollar_sing")
+	if dollarSignIndex != -1 && dollarSignIndex > 1 {
+		err = possibleErr
 		return
 	}
 
-	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Contains(s, "-") {
-		err = errors.New("more_than_one_dollar_or_cent_sign")
+	if centSignIndex != -1 && centSignIndex != len([]rune(s))-1 {
+		err = possibleErr
 		return
 	}
 
-	s = strings.ReplaceAll(s, "$", "")
-	s = strings.ReplaceAll(s, "CAD", "")
-	s = strings.ReplaceAll(s, "¢", "")
+	hasMinus := false
+
+	if minusIndex > 1 {
+		err = possibleErr
+		return
+	} else if minusIndex != -1 {
+		hasMinus = true
+	}
+
+	s = strings.ReplaceAll(s, dollarSign, "")
+	s = strings.ReplaceAll(s, centSign, "")
+	s = strings.ReplaceAll(s, minus, "")
 	s = strings.ReplaceAll(s, ",", "")
-	s = strings.TrimSpace(s)
-
-	isNegative := false
-	negativeIndex := strings.Index(s, "-")
-	if negativeIndex != -1 && negativeIndex != 0 {
-		err = possibleErr
-		return
-	} else if negativeIndex == 0 {
-		isNegative = true
-		s = strings.ReplaceAll(s, "-", "")
-	}
-
-	if s == "" {
-		err = possibleErr
-		return
-	}
-
-	var whole, decimal int
-
 	split := strings.Split(s, ".")
-	if len(split) > 2 {
-		err = possibleErr
-		return
-	}
-
-	if split[0] == "" {
-		split[0] = "0"
-	}
-
 	if len(split) == 2 {
-		if split[1] == "" {
-			split[1] = "0"
+		if number, numberErr := strconv.Atoi(split[1]); numberErr != nil || number > 99 {
+			err = possibleErr
+			return
 		}
 	}
+	s = strings.ReplaceAll(s, ".", "")
 
-	var parseErr error
-
-	whole, parseErr = strconv.Atoi(split[0])
-	if parseErr != nil {
+	var number int
+	number, err = strconv.Atoi(s)
+	if err != nil {
 		err = possibleErr
 		return
 	}
 
-	if len(split) == 2 {
-		if centSignIndex != -1 {
-			err = possibleErr
-			return
-		}
-		decimal, parseErr = strconv.Atoi(split[1])
-		if parseErr != nil {
-			err = possibleErr
-			return
-		}
-		if decimal > 99 {
-			err = possibleErr
-			return
-		}
+	if dotIndex == -1 && dollarSignIndex != -1 {
+		number *= 100
 	}
 
-	if centSignIndex != -1 && whole > 0 && decimal > 0 {
-		err = possibleErr
-		return
-	}
-
-	var cents int64
-	if centSignIndex != -1 && decimal == 0 {
-		cents = negativeOnFlag(isNegative, int64(whole))
-	} else {
-		cents = negativeOnFlag(isNegative, int64((whole*100)+decimal))
-	}
-
-	cad = Cents(cents)
+	cad = Cents(negativeOnFlag(hasMinus, int64(number)))
 	return
 }
 
@@ -223,7 +193,7 @@ func negativeOnFlag(f bool, n int64) (result int64) {
 //	cents ≤ 99
 func (c CAD) CanonicalForm() (dollars int64, cents int64) {
 	whole := c.cents / 100
-	return whole, c.cents - whole
+	return whole, c.cents - (whole * 100)
 }
 
 // Mul multiplies CAD by a scalar (number) and returns the result.
@@ -242,7 +212,20 @@ func (c CAD) GoString() string {
 
 func (c CAD) String() string {
 	dollars, cents := c.CanonicalForm()
-	return fmt.Sprintf("CAD$%d.%02d", dollars, cents)
+	appendMinus := ""
+	if c.cents < 0 {
+		if dollars > 0 {
+			dollars *= -1
+		}
+		if dollars == 0 {
+			appendMinus = "-"
+		}
+		if cents < 0 {
+			cents *= -1
+		}
+	}
+
+	return fmt.Sprintf("CAD$%s%d.%02d", appendMinus, dollars, cents)
 }
 
 func (c CAD) MarshalJSON() (b []byte, err error) {

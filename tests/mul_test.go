@@ -1,40 +1,73 @@
 package tests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/aliforever/go-cad"
 )
 
 func TestMulCents(t *testing.T) {
-	x := int64(2)
-	n := int64(106)
+	data := []struct {
+		Cents      int64
+		MultiplyBy int64
+		Expected   int64
+	}{
+		{
+			MultiplyBy: 2,
+			Cents:      106,
+			Expected:   212,
+		},
+		{
+			MultiplyBy: 3,
+			Cents:      -150,
+			Expected:   -450,
+		},
+	}
 
-	c := cad.Cents(n)
+	for testNumber, datum := range data {
+		result := cad.Cents(datum.Cents).Mul(datum.MultiplyBy).AsCents()
 
-	result := c.Mul(x).AsCents()
-	expected := x * n
-
-	if result != expected {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expected, result))
+		if result != datum.Expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %d", datum.Expected)
+			t.Logf("ACTUAL:   %d", result)
+			continue
+		}
 	}
 }
 
 func TestMulParse(t *testing.T) {
-	n := "$1.07"
-	x := int64(2)
-
-	xCad, err := cad.ParseCAD(n)
-	if err != nil {
-		t.Fatal(err)
-		return
+	data := []struct {
+		CAD        string
+		MultiplyBy int64
+		Expected   int64
+	}{
+		{
+			MultiplyBy: 2,
+			CAD:        "$1.06",
+			Expected:   212,
+		},
+		{
+			MultiplyBy: 3,
+			CAD:        "-$1.50",
+			Expected:   -450,
+		},
 	}
 
-	result := xCad.Mul(x).AsCents()
-	expected := int64(214)
+	for testNumber, datum := range data {
+		c, err := cad.ParseCAD(datum.CAD)
+		if err != nil {
+			t.Errorf("Can't parse cad for %s => %s", datum.CAD, err)
+			continue
+		}
 
-	if result != expected {
-		t.Fatal(fmt.Sprintf("Test Failed. Expected Cents: %d\nCents: %d", expected, result))
+		result := c.Mul(datum.MultiplyBy).AsCents()
+
+		if result != datum.Expected {
+			t.Errorf("For test #%d: Test Failed.", testNumber)
+			t.Logf("EXPECTED: %d", datum.Expected)
+			t.Logf("ACTUAL:   %d", result)
+			continue
+		}
 	}
 }
