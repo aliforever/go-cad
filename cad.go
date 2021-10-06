@@ -79,6 +79,16 @@ func Cents(n int64) CAD {
 func ParseCAD(s string) (cad CAD, err error) {
 	possibleErr := errors.New("invalid_cad")
 
+	s = strings.TrimSpace(s)
+
+	cadStr := "CAD"
+	cadIndex := strings.Index(s, cadStr)
+
+	if cadIndex != -1 && cadIndex != 0 {
+		err = possibleErr
+		return
+	}
+
 	s = strings.Replace(s, "CAD", "", 1)
 	s = strings.TrimSpace(s)
 
@@ -93,10 +103,12 @@ func ParseCAD(s string) (cad CAD, err error) {
 	dot := "."
 	minus := "-"
 
-	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Count(s, dot) > 1 || strings.Count(s, minus) > 1 {
+	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Count(s, dot) > 1 || strings.Count(s, minus) > 1 || strings.Count(s, cadStr) > 0 {
 		err = possibleErr
 		return
 	}
+
+	s = strings.ReplaceAll(s, "CAD", "")
 
 	dollarSignIndex := strings.Index(s, dollarSign)
 	centSignIndex := strings.Index(s, centSign)
@@ -192,8 +204,7 @@ func negativeOnFlag(f bool, n int64) (result int64) {
 // ‘cents’ is always less than for equal to 99. I.e.,:
 //	cents ≤ 99
 func (c CAD) CanonicalForm() (dollars int64, cents int64) {
-	whole := c.cents / 100
-	return whole, c.cents - (whole * 100)
+	return c.cents / 100, c.cents % 100
 }
 
 // Mul multiplies CAD by a scalar (number) and returns the result.
@@ -211,21 +222,23 @@ func (c CAD) GoString() string {
 }
 
 func (c CAD) String() string {
-	dollars, cents := c.CanonicalForm()
-	appendMinus := ""
-	if c.cents < 0 {
-		if dollars > 0 {
-			dollars *= -1
-		}
-		if dollars == 0 {
-			appendMinus = "-"
-		}
-		if cents < 0 {
-			cents *= -1
+	var sign string = ""
+	{
+		if c.cents < 0 {
+			sign = "-"
 		}
 	}
 
-	return fmt.Sprintf("CAD$%s%d.%02d", appendMinus, dollars, cents)
+	var whole int64
+	var fractional int64
+	{
+		whole, fractional = c.CanonicalForm()
+
+		whole = abs(whole)
+		fractional = abs(fractional)
+	}
+
+	return fmt.Sprintf("CAD$%s%d.%02d", sign, whole, fractional)
 }
 
 func (c CAD) MarshalJSON() (b []byte, err error) {

@@ -69,6 +69,7 @@ func TestParseCadFail(t *testing.T) {
 		".",
 		",",
 		"CAD",
+		"$123CAD.45",
 		"CADILLAC",
 		"cherry",
 		"---5",
