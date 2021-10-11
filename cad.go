@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 type CAD struct {
@@ -130,7 +131,7 @@ func ParseCAD(s string) (cad CAD, err error) {
 		return
 	}
 
-	if centSignIndex != -1 && centSignIndex != len([]rune(s))-1 {
+	if centSignIndex != -1 && centSignIndex != utf8.RuneCountInString(s)-1 {
 		err = possibleErr
 		return
 	}
