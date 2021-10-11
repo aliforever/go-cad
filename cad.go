@@ -84,7 +84,7 @@ func ParseCAD(s string) (cad CAD, err error) {
 	cadStr := "CAD"
 	cadIndex := strings.Index(s, cadStr)
 
-	if cadIndex != -1 && cadIndex != 0 {
+	if cadIndex > 0 {
 		err = possibleErr
 		return
 	}
@@ -98,12 +98,14 @@ func ParseCAD(s string) (cad CAD, err error) {
 		return
 	}
 
-	dollarSign := "$"
-	centSign := "¢"
-	dot := "."
-	minus := "-"
+	const (
+		dollarSign = "$"
+		centSign   = "¢"
+		dot        = "."
+		minus      = "-"
+	)
 
-	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Count(s, dot) > 1 || strings.Count(s, minus) > 1 || strings.Count(s, cadStr) > 0 {
+	if strings.Count(s, dollarSign) > 1 || strings.Count(s, centSign) > 1 || strings.Count(s, dot) > 1 || strings.Count(s, minus) > 1 || strings.Count(s, cadStr) > 1 {
 		err = possibleErr
 		return
 	}
@@ -263,7 +265,11 @@ func (c *CAD) UnmarshalJSON(b []byte) (err error) {
 }
 
 func (c CAD) Value() (driver.Value, error) {
-	return c.String(), nil
+	data := c.String()
+	if strings.HasPrefix(data, "CAD") {
+		data = data[len("CAD"):]
+	}
+	return data, nil
 }
 
 func (c *CAD) Scan(value interface{}) (err error) {
