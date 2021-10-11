@@ -110,8 +110,6 @@ func ParseCAD(s string) (cad CAD, err error) {
 		return
 	}
 
-	s = strings.ReplaceAll(s, "CAD", "")
-
 	dollarSignIndex := strings.Index(s, dollarSign)
 	centSignIndex := strings.Index(s, centSign)
 	minusIndex := strings.Index(s, minus)
